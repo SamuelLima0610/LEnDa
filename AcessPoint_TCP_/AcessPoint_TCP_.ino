@@ -4,10 +4,9 @@
 WiFiServer sv(555);//Cria o objeto servidor na porta 555
 WiFiClient cl;//Cria o objeto cliente.
 bool informado = false; //variavel controla o laco de receber informacoes pela tcp
-String nomeWifi; // variavel responsavel por armazenar o usuario do WiFi
-String senhaWifi;// variavel responsavel por armazenar a senha do WiFi
-const char* ssid = "";
-const char* password = "";
+char* mqtt_server = "";
+char* ssid = "";// variavel responsavel por armazenar o usuario do WiFi
+char* password = "";// variavel responsavel por armazenar a senha do WiFi
 
 void setup() {
   // put your setup code here, to run once:
@@ -63,12 +62,26 @@ bool tcp()
             
             //trata a informacao("usuario/senha")
             int indiceBarra = req.indexOf("/");
-            String conteudoAntesDaBarra = req.substring(0,indiceBarra); 
-            String conteudoDepoisDaBarra = req.substring(indiceBarra+1);      
-            if(conteudoAntesDaBarra.length() != 0 && conteudoDepoisDaBarra.length() != 0){
-              nomeWifi = conteudoAntesDaBarra;
-              senhaWifi = conteudoDepoisDaBarra;
-              return true;
+            //verifica se é uma palavra
+            if(indiceBarra != -1){ //caso seja duas
+              String conteudoAntesDaBarra = req.substring(0,indiceBarra); 
+              String conteudoDepoisDaBarra = req.substring(indiceBarra+1);      
+              if(conteudoAntesDaBarra.length() != 0 && conteudoDepoisDaBarra.length() != 0){
+                //verifica se é informação do ip
+                if(conteudoAntesDaBarra.equals("ip")){
+                  conteudoDepoisDaBarra.toCharArray(mqtt_server , 20);
+                }
+                else{ //senão for ip, só pode ser a configuração do WiFi
+                  conteudoAntesDaBarra.toCharArray(ssid , 50);
+                  conteudoDepoisDaBarra.toCharArray(password , 50);  
+                }
+              }
+            }else{
+              int teste = req.toInt();
+              //opção 1 é pra sair do server
+              if(teste == 1){//verificar se é pra sair do server tcp/ip
+                return true;
+              }
             }
             return false;
         }
