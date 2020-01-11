@@ -3,32 +3,31 @@
 
 WiFiServer sv(555);//Cria o objeto servidor na porta 555
 WiFiClient cl;//Cria o objeto cliente.
-bool informado = false; //variavel controla o laco de receber informacoes pela tcp
-char* mqtt_server = "";
-char* ssid = "";// variavel responsavel por armazenar o usuario do WiFi
-char* password = "";// variavel responsavel por armazenar a senha do WiFi
+bool servidor = false; //variavel controla o laco de receber informacoes pela tcp
+bool wifi = false; //variavel controla o estado do WiFi
+String mqtt_server = "";
+String ssid = "";// variavel responsavel por armazenar o usuario do WiFi
+String password = "";// variavel responsavel por armazenar a senha do WiFi
 
-void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(115200);//Habilita a comm serial.
-  WiFi.mode(WIFI_AP);//Define o WiFi como Acess_Point.
-  WiFi.softAP("NodeMCU", "");//Cria a rede de Acess_Point.
-  sv.begin();//Inicia o servidor TCP na porta declarada no começo.
-}
-
-void loop()
-{
-   //laço responsavel por executar o codigo até receber todos os dados necessarios para sua execução
-   while(informado == false){ 
-    informado = tcp();//Funçao que gerencia os pacotes e clientes TCP.
-   }
-   WiFi.disconnect(); //desconecta o server TCP
-   WiFi.begin(ssid, password); // conecta o WiFi recebito pelo server
+//função que configura o WiFi a ser usado para o protocolo MQTT(true - conectou false não-conectou)
+//tempo limite para conectar 30s
+bool setup_wifi(){
+   int vezes = 0; //calcular quanto tempo passou 
+   char ssid_wifi[ssid.length()];
+   ssid.toCharArray(ssid_wifi,ssid.length());
+   char password_wifi[password.length()];
+   password.toCharArray(password_wifi,password.length());
+   WiFi.begin(ssid_wifi, password_wifi); // conecta o WiFi recebito pelo server
    //laço responsavel por executar o codigo até se vincular com o WiFi
    while (WiFi.status() != WL_CONNECTED) {
+    if(vezes == 29){
+      return false;
+    }
     delay(500);
     Serial.print(".");
+    vezes++;
   }
+  return true;
 }
 
 bool tcp()
@@ -69,11 +68,11 @@ bool tcp()
               if(conteudoAntesDaBarra.length() != 0 && conteudoDepoisDaBarra.length() != 0){
                 //verifica se é informação do ip
                 if(conteudoAntesDaBarra.equals("ip")){
-                  conteudoDepoisDaBarra.toCharArray(mqtt_server , 20);
+                  mqtt_server = conteudoDepoisDaBarra;
                 }
                 else{ //senão for ip, só pode ser a configuração do WiFi
-                  conteudoAntesDaBarra.toCharArray(ssid , 50);
-                  conteudoDepoisDaBarra.toCharArray(password , 50);  
+                  ssid = conteudoAntesDaBarra;
+                  password = conteudoDepoisDaBarra;
                 }
               }
             }else{
@@ -92,4 +91,28 @@ bool tcp()
         delay(1);
     }
     return false;
+}
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(115200);//Habilita a comm serial.
+  WiFi.mode(WIFI_AP);//Define o WiFi como Acess_Point.
+  WiFi.softAP("NodeMCU", "");//Cria a rede de Acess_Point.
+  sv.begin();//Inicia o servidor TCP na porta declarada no começo.
+}
+
+void loop()
+{
+   //laço responsavel por executar o codigo até receber todos os dados necessarios para sua execução
+   while(servidor == false){ 
+    servidor = tcp();//Funçao que gerencia os pacotes e clientes TCP.
+   }
+   WiFi.disconnect(); //desconecta o server TCP
+   if(wifi == false){
+      wifi = setup_wifi();
+      if(wifi == false){
+        servidor = false;
+        return;
+      }
+   }
 }
