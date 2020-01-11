@@ -3,6 +3,7 @@
 
 WiFiServer sv(555);//Cria o objeto servidor na porta 555
 WiFiClient cl;//Cria o objeto cliente.
+
 bool servidor = false; //variavel controla o laco de receber informacoes pela tcp
 bool wifi = false; //variavel controla o estado do WiFi
 String mqtt_server = "";
@@ -13,10 +14,12 @@ String password = "";// variavel responsavel por armazenar a senha do WiFi
 //tempo limite para conectar 30s
 bool setup_wifi(){
    int vezes = 0; //calcular quanto tempo passou 
-   char ssid_wifi[ssid.length()];
-   ssid.toCharArray(ssid_wifi,ssid.length());
+   char ssid_wifi[ssid.length()+1];
+   ssid.toCharArray(ssid_wifi,ssid.length()+1);
+   Serial.println(ssid_wifi);
    char password_wifi[password.length()];
    password.toCharArray(password_wifi,password.length());
+   Serial.println(password_wifi);
    WiFi.begin(ssid_wifi, password_wifi); // conecta o WiFi recebito pelo server
    //laço responsavel por executar o codigo até se vincular com o WiFi
    while (WiFi.status() != WL_CONNECTED) {
@@ -32,6 +35,10 @@ bool setup_wifi(){
 
 bool tcp()
 {
+    int indiceBarra;
+    int before , after;
+    String ssid_wifi, password_wifi; //informações do pacote sobre o wifi
+    String user_mqtt, password_mqtt, ip_mqtt , porta_mqtt;//informações do pacote do mqtt
     if (cl.connected())//Detecta se há clientes conectados no servidor.
     {
         if (cl.available() > 0)//Verifica se o cliente conectado tem dados para serem lidos.
@@ -59,22 +66,56 @@ bool tcp()
             cl.print(WiFi.softAPIP());
             cl.print("\n...Sua mensagem: " + req + "\n");
             
-            //trata a informacao("usuario/senha")
-            int indiceBarra = req.indexOf("/");
+            // pacote = indice/informormações
+            indiceBarra = req.indexOf("/"); // pega o indice da barra
             //verifica se é uma palavra
             if(indiceBarra != -1){ //caso seja duas
-              String conteudoAntesDaBarra = req.substring(0,indiceBarra); 
-              String conteudoDepoisDaBarra = req.substring(indiceBarra+1);      
-              if(conteudoAntesDaBarra.length() != 0 && conteudoDepoisDaBarra.length() != 0){
-                //verifica se é informação do ip
-                if(conteudoAntesDaBarra.equals("ip")){
-                  mqtt_server = conteudoDepoisDaBarra;
+              int opcao = req.substring(0,indiceBarra).toInt(); 
+              if(opcao == 1){
+                before = indiceBarra;
+                for(int i = 0; i < 2; i++){   
+                  after =  req.indexOf("/",before+1);
+                  if(after != -1){
+                    ssid_wifi = req.substring(before+1,after);
+                    before = after;
+                  }else{
+                    password_wifi = req.substring(before+1);
+                  }     
                 }
-                else{ //senão for ip, só pode ser a configuração do WiFi
-                  ssid = conteudoAntesDaBarra;
-                  password = conteudoDepoisDaBarra;
+                if(ssid_wifi.length() != 0 && password_wifi.length() != 0){
+                  ssid = ssid_wifi;
+                  password = password_wifi;
+                  Serial.println(ssid);
+                  Serial.println(password);
                 }
+                
               }
+              else if(opcao == 2){
+                before = indiceBarra;
+                for(int i = 0; i < 4; i++){   
+                  after =  req.indexOf("/",before+1);
+                  if(after != -1){
+                    if(i == 0){
+                      user_mqtt = req.substring(before+1,after);
+                    }
+                    else if(i == 1){
+                      password_mqtt = req.substring(before+1,after);
+                    }
+                    else if(i == 2){
+                      ip_mqtt = req.substring(before+1,after);
+                    }
+                    before = after;
+                  }else{
+                    porta_mqtt = req.substring(before+1);
+                  }     
+                }
+                if(user_mqtt.length() != 0 && password_mqtt.length() != 0 && ip_mqtt.length() != 0 && porta_mqtt.length() != 0){
+                  Serial.println(user_mqtt);
+                  Serial.println(password_mqtt);
+                  Serial.println(ip_mqtt);
+                  Serial.println(porta_mqtt);
+                }
+              }    
             }else{
               int teste = req.toInt();
               //opção 1 é pra sair do server
@@ -107,8 +148,8 @@ void loop()
    while(servidor == false){ 
     servidor = tcp();//Funçao que gerencia os pacotes e clientes TCP.
    }
-   WiFi.disconnect(); //desconecta o server TCP
    if(wifi == false){
+      WiFi.disconnect(); //desconecta o server TCP
       wifi = setup_wifi();
       if(wifi == false){
         servidor = false;
