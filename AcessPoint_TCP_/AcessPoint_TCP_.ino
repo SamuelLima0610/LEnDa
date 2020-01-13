@@ -1,14 +1,19 @@
 #include <ESP8266WiFi.h>
 #include <WiFiServer.h>
+#include <PubSubClient.h>
 
 WiFiServer sv(555);//Cria o objeto servidor na porta 555
 WiFiClient cl;//Cria o objeto cliente.
+WiFiClient clmqtt;//Cria o objeto cliente do mqtt.
+PubSubClient client(clmqtt);
 
 bool servidor = false; //variavel controla o laco de receber informacoes pela tcp
 bool wifi = false; //variavel controla o estado do WiFi
-String mqtt_server = "";
+//String mqtt_server = "";
 String ssid = "";// variavel responsavel por armazenar o usuario do WiFi
 String password = "";// variavel responsavel por armazenar a senha do WiFi
+
+//Bloco do Wifi
 
 //função que configura o WiFi a ser usado para o protocolo MQTT(true - conectou false não-conectou)
 //tempo limite para conectar 30s
@@ -16,10 +21,8 @@ bool setup_wifi(){
    int vezes = 0; //calcular quanto tempo passou 
    char ssid_wifi[ssid.length()+1];
    ssid.toCharArray(ssid_wifi,ssid.length()+1);
-   Serial.println(ssid_wifi);
    char password_wifi[password.length()];
    password.toCharArray(password_wifi,password.length());
-   Serial.println(password_wifi);
    WiFi.begin(ssid_wifi, password_wifi); // conecta o WiFi recebito pelo server
    //laço responsavel por executar o codigo até se vincular com o WiFi
    while (WiFi.status() != WL_CONNECTED) {
@@ -30,6 +33,7 @@ bool setup_wifi(){
     Serial.print(".");
     vezes++;
   }
+  Serial.println(WiFi.localIP());
   return true;
 }
 
@@ -134,6 +138,46 @@ bool tcp()
     return false;
 }
 
+//-------------------------------------------------------------------------------------------------------------------
+
+//Bloco do MQTT
+
+//método para pegar o subscribe
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.println("Foi");
+  String conteudo= "";
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
+    conteudo.concat(String((char)payload[i]));
+  }
+  Serial.println(conteudo);
+}
+
+//reconectar ao server
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    // Create a random client ID
+    String clientId = "ESP8266Client-";
+    clientId += String(random(0xffff), HEX);
+    // Attempt to connect
+    if (client.connect(clientId.c_str(), mqttUser, mqttPassword )) {
+      Serial.println("connected");
+      client.publish("outTopic", "hello world");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);//Habilita a comm serial.
@@ -149,11 +193,21 @@ void loop()
     servidor = tcp();//Funçao que gerencia os pacotes e clientes TCP.
    }
    if(wifi == false){
-      WiFi.disconnect(); //desconecta o server TCP
+      WiFi.forceSleepBegin(); //desconecta o server TCP
+      WiFi.forceSleepWake();
       wifi = setup_wifi();
       if(wifi == false){
         servidor = false;
         return;
+      }
+      else{
+        client.setServer(mqtt_server , mqttPort);
+        client.setCallback(callback);
+        if (!client.connected()) {  
+          reconnect();
+        } 
+        client.subscribe("TESTE");
+        client.loop(); 
       }
    }
 }
