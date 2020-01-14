@@ -9,9 +9,12 @@ PubSubClient client(clmqtt);
 
 bool servidor = false; //variavel controla o laco de receber informacoes pela tcp
 bool wifi = false; //variavel controla o estado do WiFi
-//String mqtt_server = "";
 String ssid = "";// variavel responsavel por armazenar o usuario do WiFi
 String password = "";// variavel responsavel por armazenar a senha do WiFi
+String mqtt_server = "";// variavel responsavel por armazenar o ip(dns) do broker
+String mqttUser = "";//variavel responsavel por armazenar o usuario do broker
+String mqttPassword = "";//variavel responsavel por armazenar a senha do broker 
+int mqttPort;//variavel responsavel por armazenar a porta do broker 
 
 //Bloco do Wifi
 
@@ -114,10 +117,16 @@ bool tcp()
                   }     
                 }
                 if(user_mqtt.length() != 0 && password_mqtt.length() != 0 && ip_mqtt.length() != 0 && porta_mqtt.length() != 0){
-                  Serial.println(user_mqtt);
-                  Serial.println(password_mqtt);
-                  Serial.println(ip_mqtt);
-                  Serial.println(porta_mqtt);
+                  if(porta_mqtt.toInt() != 0){
+                    Serial.println(user_mqtt);
+                    mqttUser = user_mqtt;
+                    Serial.println(password_mqtt);
+                    mqttPassword = password_mqtt;
+                    Serial.println(ip_mqtt);
+                    mqtt_server = ip_mqtt;
+                    Serial.println(porta_mqtt.toInt());
+                    mqttPort = ip_mqtt.toInt();
+                  }
                 }
               }    
             }else{
@@ -144,7 +153,6 @@ bool tcp()
 
 //método para pegar o subscribe
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.println("Foi");
   String conteudo= "";
   Serial.print("Message arrived [");
   Serial.print(topic);
@@ -153,7 +161,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.print((char)payload[i]);
     conteudo.concat(String((char)payload[i]));
   }
-  Serial.println(conteudo);
 }
 
 //reconectar ao server
@@ -165,7 +172,7 @@ void reconnect() {
     String clientId = "ESP8266Client-";
     clientId += String(random(0xffff), HEX);
     // Attempt to connect
-    if (client.connect(clientId.c_str(), mqttUser, mqttPassword )) {
+    if (client.connect(clientId.c_str(), mqttUser.c_str(), mqttPassword.c_str() )) {
       Serial.println("connected");
       client.publish("outTopic", "hello world");
     } else {
@@ -194,20 +201,19 @@ void loop()
    }
    if(wifi == false){
       WiFi.forceSleepBegin(); //desconecta o server TCP
-      WiFi.forceSleepWake();
+      WiFi.forceSleepWake(); //reabilita a opção do WiFi
       wifi = setup_wifi();
       if(wifi == false){
         servidor = false;
         return;
       }
-      else{
-        client.setServer(mqtt_server , mqttPort);
-        client.setCallback(callback);
-        if (!client.connected()) {  
-          reconnect();
-        } 
-        client.subscribe("TESTE");
-        client.loop(); 
-      }
+   }else{
+      client.setServer(mqtt_server.c_str() , mqttPort);
+      client.setCallback(callback);
+      if (!client.connected()) {  
+        reconnect();
+      } 
+      client.subscribe("TESTE");
+      client.loop(); 
    }
 }
