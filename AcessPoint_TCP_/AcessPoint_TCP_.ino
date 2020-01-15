@@ -125,7 +125,7 @@ bool tcp()
                     Serial.println(ip_mqtt);
                     mqtt_server = ip_mqtt;
                     Serial.println(porta_mqtt.toInt());
-                    mqttPort = ip_mqtt.toInt();
+                    mqttPort = porta_mqtt.toInt();
                   }
                 }
               }    
@@ -165,6 +165,12 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 //reconectar ao server
 void reconnect() {
+  char userMqtt[mqttUser.length() + 1];
+  mqttUser.toCharArray(userMqtt,mqttUser.length() + 1);
+  Serial.printf("Teste: %s \n", userMqtt);
+  char passwordMqtt[mqttPassword.length() + 1];
+  mqttPassword.toCharArray(passwordMqtt,mqttPassword.length() + 1);
+  Serial.printf("Teste: %s \n", passwordMqtt);
   // Loop until we're reconnected
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
@@ -172,7 +178,7 @@ void reconnect() {
     String clientId = "ESP8266Client-";
     clientId += String(random(0xffff), HEX);
     // Attempt to connect
-    if (client.connect(clientId.c_str(), mqttUser.c_str(), mqttPassword.c_str() )) {
+    if (client.connect(clientId.c_str(), userMqtt, passwordMqtt)) {
       Serial.println("connected");
       client.publish("outTopic", "hello world");
     } else {
@@ -208,7 +214,9 @@ void loop()
         return;
       }
    }else{
-      client.setServer(mqtt_server.c_str() , mqttPort);
+      char serverMqtt[mqtt_server.length() + 1];
+      mqtt_server.toCharArray(serverMqtt,mqtt_server.length() + 1);
+      client.setServer(serverMqtt, mqttPort);
       client.setCallback(callback);
       if (!client.connected()) {  
         reconnect();
