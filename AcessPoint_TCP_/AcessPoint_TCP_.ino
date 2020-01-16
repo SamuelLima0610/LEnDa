@@ -161,6 +161,24 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.print((char)payload[i]);
     conteudo.concat(String((char)payload[i]));
   }
+  if(conteudo.startsWith("LED")){ // pacote responsavel por ditar o comportamento dos LEDS
+    String acaoLED = conteudo.substring(conteudo.indexOf("/") + 1); //qual a acao a ser realizada
+    if(acaoLED.startsWith("ASCENDER")){//ascender
+      int tempo = acaoLED.substring(acaoLED.indexOf("/") + 1).toInt(); //pega o tempo
+      Serial.println(tempo);
+    }else if(acaoLED.startsWith("DESLIGAR")){//desligar
+      Serial.println("Desligou LED");
+    }  
+  }else if(conteudo.startsWith("BUZZER")){// pacote responsavel por ditar o comportamento dos BUZZERS
+    String acaoBUZZER = conteudo.substring(conteudo.indexOf("/") + 1);//qual a acao a ser realizada
+    if(acaoBUZZER.startsWith("TOCAR")){//tocar
+      int faixa = acaoBUZZER.substring(acaoBUZZER.indexOf("/") + 1).toInt();//frequencia
+      int tempo = acaoBUZZER.substring(acaoBUZZER.lastIndexOf("/") + 1).toInt();//tempo
+      Serial.printf("\n Faixa: %d Tempo: %d\n",faixa,tempo);
+    }else if(acaoBUZZER.startsWith("DESLIGAR")){
+      Serial.println("Desligou BUZZER");
+    }
+  }
 }
 
 //reconectar ao server
@@ -221,7 +239,7 @@ void loop()
       if (!client.connected()) {  
         reconnect();
       } 
-      client.subscribe("TESTE");
+      client.subscribe("ENTRADA");
       client.loop(); 
    }
 }
