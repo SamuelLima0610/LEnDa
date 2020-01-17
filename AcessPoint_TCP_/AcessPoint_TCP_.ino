@@ -15,9 +15,9 @@ String mqtt_server = "";// variavel responsavel por armazenar o ip(dns) do broke
 String mqttUser = "";//variavel responsavel por armazenar o usuario do broker
 String mqttPassword = "";//variavel responsavel por armazenar a senha do broker 
 int mqttPort;//variavel responsavel por armazenar a porta do broker 
+String idDispositivo = "";//variavel por armazenar o id do dispositivo
 
 //Bloco do Wifi
-
 //função que configura o WiFi a ser usado para o protocolo MQTT(true - conectou false não-conectou)
 //tempo limite para conectar 30s
 bool setup_wifi(){
@@ -128,7 +128,10 @@ bool tcp()
                     mqttPort = porta_mqtt.toInt();
                   }
                 }
-              }    
+              }else if(opcao == 3){//id do dispositivo
+                 idDispositivo = req.substring(indiceBarra + 1);
+                 Serial.println(idDispositivo);    
+              }
             }else{
               int teste = req.toInt();
               //opção 1 é pra sair do server
@@ -198,7 +201,8 @@ void reconnect() {
     // Attempt to connect
     if (client.connect(clientId.c_str(), userMqtt, passwordMqtt)) {
       Serial.println("connected");
-      client.publish("outTopic", "hello world");
+      String mensagem = "hello world " + idDispositivo;
+      client.publish("outTopic", mensagem.c_str());
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
